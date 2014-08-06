@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# For each file specified on the command line, try to get the creation
+# time from the video's metadata and touch the file to match that
+# date.
+
+FFMPEG='/cygdrive/c/Users/mrb/Documents/code/ffmpeg-20131222-git-9b195dd-win64-static/bin/ffmpeg'
+
+for infile in "$@"; do
+
+    creation_time=$("$FFMPEG" -i "$(cygpath -aw "$infile")" /dev/null 2>&1 | sed '/^ *creation_time *: \(.*\)/s//\1/p;d' | head -1)
+
+    if [[ -n $creation_time ]]; then
+        original_time=$(stat -c '%y' "$infile" | cut -c-19)
+        if [[ $original_time != $creation_time ]]; then
+            echo "$infile": "$original_time" "=>" "$creation_time"
+            touch -d "$creation_time" "$infile"
+        else
+            echo no update needed for "$infile" >&2
+        fi
+    else
+        echo "couldn't read creation time from" "$infile" >&2
+    fi
+
+done

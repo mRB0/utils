@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+
+# Re-encode a video file to save space.
+#
+# This transcodes the input file's audio to AAC using neroAacEnc, and
+# transcodes the video using ffmpeg & libx264.  It attempts to copy
+# all the metadata from the original input, and creates an mp4 output.
+#
+# This is a single-file version of convert-batch, and was based on it.
+# convert-batch came first, and this was created for additional
+# flexibility when processing only one file.
+#
+# Potential improvements:
+#
+# - Lots of the code is duplicated between this and convert-batch, and
+#   should probably be shared.
+# - If the input audio is already AAC, we shouldn't transcode it.
+
+FFMPEG='/cygdrive/c/Users/mrb/Documents/code/ffmpeg-20131222-git-9b195dd-win64-static/bin/ffmpeg'
+AACENC='/cygdrive/c/users/mrb/Documents/apps/NeroAACCodec/win32/neroAacEnc.exe'
+
+while getopts "ho:" flag
+do
+    case $flag in 
+        o) 
+            OUTPUT="$OPTARG"
+            ;;
+        h)
+            echo "usage: $0 [-o outfile] infile [-args-to-ffmpeg eg. -ss, -t]"
+            exit
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+n=0
+abort=
+notes=
+
+infile="$1"
+shift
+# ffmpeg args in "$@"
+
+# Check for problems
+
+if [[ ! -e "$infile" ]]; then
+    echo "Fatal: $infile doesn't exist."
+    abort=yeah
+    exit
+fi
+
+if [[ -z "$OUTPUT" ]]; then
+    outfile="$(echo "$infile" | sed -r 's/(\.[^.]+)?$/.mp4/i')"
+else
+    outfile="$OUTPUT"
+fi
+
+shopt -s nocasematch
+
+if [[ $outfile == $infile ]]; then
+    if [[ -z "$OUTPUT" ]]; then
+        outfile="$(echo "$infile" | sed -r 's/(\.[^.]+)?$/ reencode\1/')"
+        notes="${notes}File \"$infile\" already ends in .mp4; output will be to \"$outfile\"\n"
+    fi
+fi
+
+if [[ -e $outfile ]]; then
+    echo "Fatal: $outfile exists.  Not overwriting."
+    abort=yeah
+    exit
+fi
+
+shopt -u nocasematch
+
+if [[ -n $abort ]]; then
+    exit 1
+fi
+
+if [[ -n $notes ]]; then
+    echo "Notes before proceeding:"
+    echo
+    echo -e "$notes"
+    echo 'Press enter to continue.'
+    read
+    notes="${notes}\n"
+fi
+
+# Encode files
+
+base="$(basename "$infile")"
+
+wavfile="/tmp/""$base"".wav"
+aacfile="/tmp/""$base"".m4a"
+
+echo
+echo "$i:" "$infile" "->" "$outfile"
+date
+echo
+
+notes="${notes}""$infile"" -> ""$outfile""\n"
+
+#
+# Extract audio from original video
+#
+
+if [[ -e "$wavfile" ]]; then
+    rm "$wavfile"
+fi
+
+"$FFMPEG" -i "$(cygpath -aw "$infile")" -map 0:a:0 "$(cygpath -aw "$wavfile")"
+if [[ $? != 0 ]]; then
+    notes="${notes}Error extracting audio from $infile\n"
+    exit
+fi
+
+#
+# Re-encode audio as AAC
+#
+
+"$AACENC" -q 0.50 -if "$(cygpath -aw "$wavfile")" -of "$(cygpath -aw "$aacfile")"
+if [[ $? != 0 ]]; then
+    notes="${notes}Error AAC-encoding extracted audio in $wavfile (not deleted)\n"
+    exit
+fi
+
+rm "$wavfile"
+
+#
+# Re-encode video
+#
+# Summary of options:
+#   Use video streams from input file 0: -map 0:v
+#   Use video streams from input file 1: -map 1:a
+#   Audio metadata is copied from file 0, because it's more appropriate to the recording than the re-encoded aac.
+#   Copy video stream metadata from file 0 (0:s:v) and place in output stream video (..:s:v): -map_metadata:s:v 0:s:v 
+#   Copy audio stream metadata from file 0 (0:s:a) and place in output stream audio (..:s:v): -map_metadata:s:a 0:s:a
+#   Copy global metadata from input file 0: -map_metadata:g 0:g 
+#   Video quality (lower is better): -crf 23.0
+#   "veryslow" libx264 preset for highest quality encoding: -preset veryslow
+#   Copy audio (from file 1, thanks to -map 1:a) -codec:a copy
+#
+
+"$FFMPEG" -i "$(cygpath -aw "$infile")" -i "$(cygpath -aw "$aacfile")" -map 0:v -map 1:a -map_metadata:s:v 0:s:v -map_metadata:s:a 0:s:a -map_metadata:g 0:g -crf 23.0 -vcodec libx264 -pix_fmt yuv420p -preset veryslow -movflags faststart -codec:a copy -coder 1 -rc_lookahead 60 -threads 3 "$@" "$(cygpath -aw "$outfile")"
+if [[ $? != 0 ]]; then
+    notes="${notes}Error transcoding $infile ($aacfile not deleted)\n"
+    exit
+fi
+
+rm "$aacfile"
+
+#
+# Set creation time of the file to match the metadata
+#
+
+creation_time=$("$FFMPEG" -i "$(cygpath -aw "$outfile")" /dev/null 2>&1 | sed '/^ *creation_time *: \(.*\)/s//\1/p;d' | head -1)
+
+if [[ -n $creation_time ]]; then
+    touch -d "$creation_time" "$outfile"
+fi
+
+echo "Finished $(date)"
+
+if [[ -n $notes ]]; then
+    echo
+    echo "Notes:"
+    echo
+    echo -e "$notes"
+fi

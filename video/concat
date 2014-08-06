@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+FFMPEG='/cygdrive/c/Users/mrb/Documents/code/ffmpeg-20131222-git-9b195dd-win64-static/bin/ffmpeg'
+
+while getopts  "o:" flag
+do
+    case $flag in 
+        o) 
+            OUTPUT="$OPTARG"
+            ;;
+    esac
+done
+
+if [[ -z "$OUTPUT" ]]; then
+    echo "usage: $0 -o outputfile.{mp4,mov,...} infile1 infile2 ..."
+    exit 1
+fi
+
+shift $((OPTIND-1))
+
+filelist="$(mktemp)"
+
+for fn in "$@"; do
+    echo "file '"$(cygpath -aw "$fn")"'"
+done > "$filelist"
+
+set -x
+
+"$FFMPEG" -f concat -i "$(cygpath -aw "$filelist")" -c copy "$(cygpath -aw "$OUTPUT")"
+
+rm "$filelist"
