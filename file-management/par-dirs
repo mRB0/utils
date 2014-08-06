@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# Make a unique par2 set for each directory specified on the command
+# line.
+# 
+# Usage, eg.
+#
+#    par-dirs "example dir" "example2"
+#
+# Creates: "example dir.par2" and example2.par2
+# 
+# This will probably need to be extended to re-create par2 files or
+# delete existing ones or verify then delete them, so it can be run
+# repeatedly on the same dirs.  Also, who knows if it handles subdirs?
+# Maybe it do, maybe it don't.
+# 
+# /uo: For stdout in utf-8.
+# /rr4: Redundancy level 4%
+
+PAR2="$(cygpath -au 'C:\Program Files (x86)\MultiPar\par2j.exe')"
+
+for dirname in "$@"; do
+    if [[ -d $dirname ]]; then
+        (
+            echo "$dirname"
+            cd "$dirname"
+            "$PAR2" c /uo /rr4 "$(cygpath -aw ../"$dirname")" '*'
+        )
+    fi
+done
