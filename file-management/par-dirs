@@ -16,6 +16,8 @@
 # 
 # /uo: For stdout in utf-8.
 # /rr4: Redundancy level 4%
+#
+# TODO: Generate more volume (.par2) files in case they disappear?
 
 PAR2="$(cygpath -au 'C:\Program Files (x86)\MultiPar\par2j.exe')"
 

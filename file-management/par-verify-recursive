@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+import os
+import re
+import logging
+from pprint import pformat
+
+PAR2 = u'/cygdrive/c/Program Files (x86)/MultiPar/par2j.exe'
+
+def main():
+    """
+
+    Verify all the .par2 files found in the current directory and all
+    subdirs, recursively.
+
+    Print a report at the end, listing any errors found in the pars.
+
+    This ignores .vol#+#.par2 files, and only verifies .par2 files.
+    It isn't particularly intelligent about this, so if no .par2 file
+    exists without .vol#+#.par2 files, they'll all be skipped.
+
+    ^ This needs to be fixed.  Let's maybe try getting the base name
+    (before the .par2 / .vol#+#.par2), and combining everything with
+    the same base name.  If we run par2 on any of the files in a
+    group, it seems smart enough to figure out that they're together.
+
+    """
+    
+    par_files = []
+    
+    logging.info(u"Find par files")
+    
+    for dirname, subdirnames, filenames in os.walk(u'.'):
+        par_files += [(dirname, f)
+                      for f in filenames
+                      if re.search(ur'\.par2$', f) and
+                      not re.search(ur'\.vol[0-9]+\+[0-9]+\.par2', f)]
+
+    logging.debug(u"Pars:")
+    logging.debug(pformat(par_files))
+
+    logging.info(u"Verify pars")
+
+    par_results = []
+    for par_dir, par_file in par_files:
+        root = os.getcwd()
+        os.chdir(par_dir)
+        rc = os.spawnv(os.P_WAIT, PAR2, [PAR2, 'v', par_file])
+        logging.debug(u"rc = {}".format(rc))
+        os.chdir(root)
+        par_results.append((par_dir, par_file, rc))
+
+    par_errors = [p for p in par_results if p[2] != 0]
+
+    if par_errors:
+        logging.info(u'==============================================')
+        logging.info(u' Errors')
+        logging.info(u'==============================================')
+
+        for par_dir, par_file, rc in par_errors:
+            logging.info(u"{}: {}".format(rc, os.path.join(par_dir, par_file)))
+    else:
+        logging.info(u'==============================================')
+        logging.info(u' All files OK')
+        logging.info(u'==============================================')
+        
+if __name__ == '__main__':
+    logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO)
+
+    main()
