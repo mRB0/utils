@@ -5,7 +5,7 @@
 # filenames are chosen automatically.  Otherwise, behaves the same as
 # convert.
 
-FFMPEG='/cygdrive/c/Users/mrb/Documents/code/ffmpeg-20131222-git-9b195dd-win64-static/bin/ffmpeg'
+FFMPEG=ffmpeg
 AACENC='/cygdrive/c/users/mrb/Documents/apps/NeroAACCodec/win32/neroAacEnc.exe'
 
 n=0

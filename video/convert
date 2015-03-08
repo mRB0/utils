@@ -16,7 +16,7 @@
 #   should probably be shared.
 # - If the input audio is already AAC, we shouldn't transcode it.
 
-FFMPEG='/cygdrive/c/Users/mrb/Documents/code/ffmpeg-20131222-git-9b195dd-win64-static/bin/ffmpeg'
+FFMPEG='ffmpeg'
 AACENC='/cygdrive/c/users/mrb/Documents/apps/NeroAACCodec/win32/neroAacEnc.exe'
 
 while getopts "ho:" flag
@@ -137,7 +137,7 @@ rm "$wavfile"
 #   Copy audio stream metadata from file 0 (0:s:a) and place in output stream audio (..:s:v): -map_metadata:s:a 0:s:a
 #   Copy global metadata from input file 0: -map_metadata:g 0:g 
 #   Video quality (lower is better): -crf 23.0
-#   "veryslow" libx264 preset for highest quality encoding: -preset veryslow
+#   "veryslow" libx264 preset for best compression: -preset veryslow
 #   Copy audio (from file 1, thanks to -map 1:a) -codec:a copy
 #
 
