@@ -5,7 +5,7 @@ import re
 import logging
 from pprint import pformat
 
-PAR2 = u'/cygdrive/c/Program Files (x86)/MultiPar/par2j.exe'
+PAR2 = os.getenv('PAR2', u'/cygdrive/c/Program Files (x86)/MultiPar/par2j.exe')
 
 def main():
     """
