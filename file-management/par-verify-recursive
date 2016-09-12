@@ -36,6 +36,8 @@ def main():
                       if re.search(ur'\.par2$', f) and
                       not re.search(ur'\.vol[0-9]+\+[0-9]+\.par2', f)]
 
+    par_files.sort()
+    
     logging.debug(u"Pars:")
     logging.debug(pformat(par_files))
 
